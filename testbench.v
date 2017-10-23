@@ -7,7 +7,7 @@ module pic();
 
 	wire [13:0] current_instruction;
 	wire [5:0] full_opcode;
-	wire[1:0] type_opcode;
+	wire[1:0] type_opcode, op_type;
 	wire [3:0] opcode;
 	wire inmediate_enable;
 	wire [6:0] register_address;
@@ -15,20 +15,21 @@ module pic();
 	wire [11:0] instruction_reg_out;
 	wire [7:0] registers_out;
 	wire [7:0] w_reg_out;
+	wire [7:0] inmediate_value;
   	wire [7:0] alu_out, alu_in;
 
 	pc pc_pic (clk_pc, reset, pc);
 	flash_program_memory instruction_memory (clk_instruction_memory, pc, current_instruction);
 	// El instruction register hace forward de la instruccion 
   	instruction_register instruction_register(clk_instruction_memory, current_instruction, full_opcode, 
-  		register_address , enable_instr_reg, inmediate_enable);
+  		register_address ,inmediate_value, op_type, enable_instr_reg, inmediate_enable);
  
  
-  	w_register w_register (clk_registers, ~enable_instr_reg, alu_out, w_reg_out);
+  	w_register w_register (clk_registers, ~enable_instr_reg, op_type, alu_out, w_reg_out);
     
-    registers registers(clk_registers, enable_instr_reg, register_address, alu_out, registers_out);
+    registers registers(clk_registers, enable_instr_reg, op_type, register_address, alu_out, registers_out);
 
-    mux_inmediate mux_inmediate(clk_instruction_memory, inmediate_enable, register_address, registers_out, alu_in);
+    mux_inmediate mux_inmediate(inmediate_enable, inmediate_value, registers_out, alu_in);
   	decode decode(full_opcode, type_opcode, opcode);
   	alu_version_1 alu (clk_alu, opcode, type_opcode,  w_reg_out, alu_in, alu_out);
 
@@ -67,14 +68,16 @@ module pic();
 		#5	master_clk = !master_clk;
 
   initial begin
-    $display ("   \t\tCLK0\tCLK1\tCLK2\tCLK3\tPC\tCURRENT\tOPCODE\tF-ADDR\tW-REG\tF-REGS\tALU-OUT");
-    $monitor("   \t\t%b\t%b\t%b\t%b\t%h\t%h\t%h\t%h\t%h\t%h\t%h", clk_pc, 
+    $display ("   \t\tCLK0\tCLK1\tCLK2\tCLK3\tPC\tCURRENT\tTYPEOP\tOPCODE\tINMEDIATE\tF-ADDR\tW-REG\tF-REGS\tALU-OUT");
+    $monitor("   \t\t%b\t%b\t%b\t%b\t%h\t%h\t%h\t%h\t%h\t%h\t%h\t%h", clk_pc, 
     	clk_instruction_memory, 
     	clk_alu, 
     	clk_registers,
     	pc, 
     	current_instruction,
-    	opcode,
+    	type_opcode,
+        opcode,
+        inmediate_value,
         register_address,
     	w_reg_out,
     	registers_out,
