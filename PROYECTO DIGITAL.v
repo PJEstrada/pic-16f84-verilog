@@ -1,4 +1,10 @@
-	module pc(input clk,input reset, output[11:0] pc);
+	module pc(input clk,
+		 input enable_goto,
+		 input[10:0] value_goto,
+		 input return_enable,
+		 input[11:0] return_value,
+		 input reset,
+		 output[11:0] pc);
 	  /*
 	  	PROGRAM COUNTER: este modulo incrementa el pc en uno cada vez
 	  	que cambie el reloj. Y lo setea a 0 cuando recibe la señal de 
@@ -8,7 +14,13 @@
 	  always @(posedge clk ) begin
 	    if (reset) begin
 	      pc <= 0;
+	    end
+	    else if(enable_goto==1) begin
+	    	pc <= value_goto;
 	    end 
+	    else if(return_enable==1) begin
+	    	pc <= return_value;
+	    end
 	   	else begin
 	    	pc <= pc + 1;
 	      end
@@ -18,6 +30,7 @@
 
 	module flash_program_memory(
 	  input clk,
+	  input enable_nop,
 	  input [11:0] addr,
 	  output [13:0]instruction
 	);
@@ -30,18 +43,28 @@
 
 
 		always @(posedge clk) begin
-			instruction <= memory[addr];
+			if(enable_nop == 1)begin
+				instruction = 0;
+			end
+			else begin
+				instruction <= memory[addr];	
+			end
+			
 		end
 
 
 		initial begin
 		$readmemh("test.asm", memory);
-		end
+	end
 
 	endmodule
 
-	module alu_version_1(input clk, input[3:0] opcode, input[1:0] type_opcode,
-	 input[7:0] w_reg, input[7:0] f_reg, output[7:0] result);
+	module alu_version_1(input clk, 
+		input[3:0] opcode,
+		input[1:0] type_opcode,
+	 	input[7:0] w_reg, 
+	 	input[7:0] f_reg,
+	 	output[7:0] result);
 
 		reg[7:0] result;
 		always @(posedge clk) begin
@@ -92,7 +115,7 @@
 						result <= f_reg + 1; 
 					end
 					11: begin
-					// MOVF
+					// DECFSZ
 						//TODO: Pendiente el JUMP
 						result <= f_reg - 1 ; 
 					end
@@ -120,10 +143,15 @@
 			// BIT Instructions
 			/*else if (type_opcode == 1) begin
 				
-			end
+			end*/
 			// CALL / GOTO
-			else if (type_opcode == 2) begin
-				
+			/*else if (type_opcode == 2) begin
+				if(opcode[3]==1)begin
+					// GOTO
+					inmediate_goto[7:0] = f_reg;
+					inmediate_goto[10:8] = opcode[2:0];
+					enable_goto = 1;
+				end
 			end*/
 			// INMEDIATES
 			else if (type_opcode == 3) begin
@@ -131,7 +159,7 @@
 				if (opcode[3]==0 && opcode[2]==0) begin
 					result <= f_reg;
 				end
-				// RETLW
+				// ,-{j}
 				else if (opcode[3]==0 && opcode[2]==1) begin
 					//TODO: Pendiente
 				end
@@ -161,13 +189,39 @@
 				end	
 				// ADDLW
 				else if (opcode[3]==1&&opcode[2]==1&&opcode[1]==1) begin
-                  $display ("ON ADD!!!!!");
 					result <= f_reg + w_reg;
 				end						
 			end
 
 		end
 
+	endmodule
+
+	module stack(input call_enable,
+		input [11:0] pc,
+		input return_enable,
+		output[11:0] stack_out);
+
+		reg[12:0] stack[7:0];
+		reg[3:0] stack_pointer;
+		reg[11:0] stack_out;
+		integer i;
+		initial begin
+		  stack_pointer = 0;
+		  stack_out = 0;
+
+	      for (i = 0; i < 8; i= i + 1) 
+	        stack[i] = 0;
+		end
+		always @(posedge call_enable) begin
+			stack_pointer = stack_pointer + 1;
+			stack[stack_pointer-1] = pc + 1;
+		end
+
+		always @(posedge return_enable) begin
+			stack_out = stack[stack_pointer-1];
+			stack_pointer = stack_pointer - 1;
+		end
 	endmodule
 
 	module instruction_register(input clk,
@@ -177,6 +231,7 @@
 	                            output [7:0] inmediate_value,
 	                            output [1:0] op_type,
 	                            output enable,
+	                            output [10:0]inmediate_goto,
 	                            output inmediate_enable);
 
 		assign full_opcode = current_instr[13:8];
@@ -189,6 +244,7 @@
 		assign inmediate_value = current_instr[7:0];
 		assign inmediate_enable =  current_instr[13];
 		assign enable = current_instr[7];
+		assign  inmediate_goto = current_instr[10:0];
 
 	endmodule
 

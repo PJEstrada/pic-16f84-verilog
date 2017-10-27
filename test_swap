@@ -1,0 +1,2 @@
+A81 // 1010 1 0000001 -- INC 0x01 (Incrementa 0x01 en 1 y lo guarda en 0x01) REG[1]=1
+e81   //  1110 1 0000001 -- SWAPF 0X01 (Intercambia los 4 bit superiores por los inferiores)

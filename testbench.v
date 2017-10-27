@@ -17,23 +17,84 @@ module pic();
 	wire [7:0] w_reg_out;
 	wire [7:0] inmediate_value;
   	wire [7:0] alu_out, alu_in;
-
-	pc pc_pic (clk_pc, reset, pc);
-	flash_program_memory instruction_memory (clk_instruction_memory, pc, current_instruction);
-	// El instruction register hace forward de la instruccion 
-  	instruction_register instruction_register(clk_instruction_memory, current_instruction, full_opcode, 
-  		register_address ,inmediate_value, op_type, enable_instr_reg, inmediate_enable);
- 
- 
-  	w_register w_register (clk_registers, ~enable_instr_reg, op_type, alu_out, w_reg_out);
-    
-    registers registers(clk_registers, enable_instr_reg, op_type, register_address, alu_out, registers_out);
-
-    mux_inmediate mux_inmediate(inmediate_enable, inmediate_value, registers_out, alu_in);
-  	decode decode(full_opcode, type_opcode, opcode);
-  	alu_version_1 alu (clk_alu, opcode, type_opcode,  w_reg_out, alu_in, alu_out);
-
+  	wire [10:0] inmediate_goto;
+  	wire enable_nop;
+  	wire return_enable;
+  	wire [11:0] return_value;
+  	wire enable_goto;
 	
+	pc pc_pic (clk_pc,
+		enable_goto,
+		inmediate_goto,
+		return_enable,
+		return_value,
+		reset,
+		pc);
+
+	flash_program_memory instruction_memory (
+		clk_instruction_memory,
+		enable_nop,
+		pc,
+		current_instruction);
+
+	// El instruction register hace forward de la instruccion 
+	instruction_register instruction_register(
+		clk_instruction_memory,
+		current_instruction,
+		full_opcode, 
+		register_address,
+		inmediate_value,
+		op_type,
+		enable_instr_reg,
+		inmediate_goto,
+		inmediate_enable);
+	 
+ 
+  	w_register w_register (
+		clk_registers,
+		~enable_instr_reg,
+		op_type,
+		alu_out,
+		w_reg_out);
+
+    registers registers(
+		clk_registers,
+		enable_instr_reg,
+		op_type,
+		register_address,
+		alu_out,
+		registers_out);
+
+    mux_inmediate mux_inmediate(
+		inmediate_enable,
+		inmediate_value,
+		registers_out,
+		alu_in);
+  	
+  	decode decode(
+		full_opcode,
+		type_opcode,
+		opcode);
+
+  	alu_version_1 alu (
+		clk_alu,
+		opcode, 
+		type_opcode,  
+		w_reg_out, 
+		alu_in,
+		alu_out);
+
+	assign enable_goto = type_opcode[1] && ~type_opcode[0];
+	
+	/*Se ejecuta un NOP solo si:
+		LA ALU regresa un  0 y ademas el opcode es 11 o 15 (DECFSZ / INCFSZ)
+
+	*/
+	assign enable_nop = ((alu_out == 0) &&
+						(type_opcode==0&&opcode==11||
+						 type_opcode==0&&opcode==15)) ;
+
+	assign return_enable = (full_opcode==0 && register_address==8);
 	// Clock Management
 	clock_divisor clock_divisor (master_clk,
 								 clk_pc, 
