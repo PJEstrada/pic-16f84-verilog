@@ -1,0 +1,11 @@
+A81  // 1010 1 0000001 -- INC 0x01 (Incrementa 0x01 en 1 y lo guarda en 0x01) REG[1]=1
+A81  // 1010 1 0000001 -- INC 0x01 (Incrementa 0x01 en 1 y lo guarda en 0x01) REG[1]=2
+A81  // 1010 1 0000001 -- INC 0x01 (Incrementa 0x01 en 1 y lo guarda en 0x01) REG[1]=3
+2007 // 10 0 00000000111-- CALL 0X07 (Ejecutar rutina en pos 0x07)    
+3e01 // ADDLW 1  --> W=26 | 11111000000001
+3e01 // ADDLW 1  --> W=27 | 11111000000001
+280a    // 10 1 00000001010  -- GOTO 0xA (SALTO HACIA POSICION 10)
+3009 // MOVLW 9 --> W=9 | 11000000001001*****************SUBRUTINA: COLOCA UN 16 EN EL REGISTRO W
+3e07 // ADDLW 7  --> W=16 | 11111000000111     
+3419    // 11 01XX 00010101 -- RETURNLW 25
+0 //NOP

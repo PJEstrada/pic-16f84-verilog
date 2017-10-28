@@ -22,8 +22,11 @@ module pic();
   	wire return_enable;
   	wire [11:0] return_value;
   	wire enable_goto;
+  	wire call_enable;
+  	wire return_opcode_value;
 	
-	pc pc_pic (clk_pc,
+	pc pc_pic (
+		clk_pc,
 		enable_goto,
 		inmediate_goto,
 		return_enable,
@@ -54,6 +57,7 @@ module pic();
 		clk_registers,
 		~enable_instr_reg,
 		op_type,
+		return_opcode_value,
 		alu_out,
 		w_reg_out);
 
@@ -84,8 +88,15 @@ module pic();
 		alu_in,
 		alu_out);
 
+  	stack stack(
+  		call_enable,
+  		pc,
+  		return_enable,
+  		return_value);
+
+  	assign call_enable = (type_opcode==2&&opcode[3]==0);
 	assign enable_goto = type_opcode[1] && ~type_opcode[0];
-	
+	assign return_opcode_value = current_instruction[7:0] == 8;
 	/*Se ejecuta un NOP solo si:
 		LA ALU regresa un  0 y ademas el opcode es 11 o 15 (DECFSZ / INCFSZ)
 
@@ -94,7 +105,7 @@ module pic();
 						(type_opcode==0&&opcode==11||
 						 type_opcode==0&&opcode==15)) ;
 
-	assign return_enable = (full_opcode==0 && register_address==8);
+	assign return_enable = ( (full_opcode==0 && register_address==8) || (type_opcode==3&&opcode[3]==0&&opcode[2]==1) );
 	// Clock Management
 	clock_divisor clock_divisor (master_clk,
 								 clk_pc, 
@@ -130,7 +141,7 @@ module pic();
 
   initial begin
     $display ("   \t\tCLK0\tCLK1\tCLK2\tCLK3\tPC\tCURRENT\tTYPEOP\tOPCODE\tINMEDIATE\tF-ADDR\tW-REG\tF-REGS\tALU-OUT");
-    $monitor("   \t\t%b\t%b\t%b\t%b\t%h\t%h\t%h\t%h\t%h\t%h\t%h\t%h", clk_pc, 
+    $monitor("   \t\t%b\t%b\t%b\t%b\t%d\t%h\t%d\t%d\t%d\t%d\t%d\t%d", clk_pc, 
     	clk_instruction_memory, 
     	clk_alu, 
     	clk_registers,
@@ -144,6 +155,19 @@ module pic();
     	registers_out,
     	alu_out);
 
+
+    // $display ("   \t\tPC\tCURRENT\tTYPEOP\tOPCODE\tINMEDIATE\tF-ADDR\tALUIN\t\tW-REG\tF-REGS\tALU-OUT");
+    // $monitor("   \t\t%d\t%h\t%d\t%d\t%d\t%d\t%d\t%d\t%d", 
+    // 	pc, 
+    // 	current_instruction,
+    // 	type_opcode,
+    //     opcode,
+    //     inmediate_value,
+    //     register_address,
+    //     alu_in,
+    // 	w_reg_out,
+    // 	registers_out,
+    // 	alu_out);
     //Monitor Clocks
     //$display ("   CLK0\tCLK1\tCLK2\tCLK3");
     //$monitor("   %b\t%b\t%b\t%b", clk_pc, clk_instruction_memory, clk_alu, clk_registers);

@@ -159,10 +159,6 @@
 				if (opcode[3]==0 && opcode[2]==0) begin
 					result <= f_reg;
 				end
-				// ,-{j}
-				else if (opcode[3]==0 && opcode[2]==1) begin
-					//TODO: Pendiente
-				end
 				// IORLW
 				else if ( opcode == 8) begin
 					result <= w_reg || f_reg;
@@ -190,6 +186,10 @@
 				// ADDLW
 				else if (opcode[3]==1&&opcode[2]==1&&opcode[1]==1) begin
 					result <= f_reg + w_reg;
+				end	
+				// RETLW
+				else if (opcode[3]==0&&opcode[2]==1) begin
+					result <= f_reg;
 				end						
 			end
 
@@ -207,11 +207,11 @@
 		reg[11:0] stack_out;
 		integer i;
 		initial begin
-		  stack_pointer = 0;
-		  stack_out = 0;
+			stack_pointer = 0;
+			stack_out = 0;
 
-	      for (i = 0; i < 8; i= i + 1) 
-	        stack[i] = 0;
+			for (i = 0; i < 8; i= i + 1) 
+			stack[i] = 0;
 		end
 		always @(posedge call_enable) begin
 			stack_pointer = stack_pointer + 1;
@@ -277,8 +277,13 @@
 	endmodule
 
 
-	module w_register(input clk, input enable_write,
-		input[1:0] op_type, input[7:0] indata, output [7:0] outdata );
+	module w_register(
+		input clk, 
+		input enable_write,
+		input[1:0] op_type, 
+	    input return_opcode_value,
+		input[7:0] indata, 
+		output [7:0] outdata );
 		/*
 			Este modulo se encarga de maneja la logica de escritura / lecture
 			para el W Register.
@@ -288,7 +293,9 @@
 		always @(posedge clk) begin
 			// Revisar si tenemos una instrccion normal con enable save
 			// O, una instruccion de inmediatos.
-			if ( (enable_write && op_type==0) || op_type==3) begin
+			if ( (enable_write && op_type==0 && 
+				return_opcode_value==0) 
+				|| op_type==3) begin
 				outdata <= indata;
 			end
 		end
